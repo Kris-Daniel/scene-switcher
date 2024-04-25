@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class QuickSceneSwitcher : EditorWindow
 {
@@ -113,11 +114,27 @@ public class QuickSceneSwitcher : EditorWindow
                 GUI.backgroundColor = GetButtonColorBasedOnEditorTheme(buttonColors[i]);
                 UpdateButtonStyleTextColor(GUI.backgroundColor, buttonStyleBold);
 
+                GUILayout.BeginHorizontal();
+                
                 // Draw scene button
                 if (scenes[i] != null && GUILayout.Button($"{scenes[i].name}{(isCurrentScene ? " (current)" : "")}", buttonStyleBold))
                     OpenScene(scenes[i]);
+                
+                // Add new button for adding current scene
+                if (GUILayout.Button("+",buttonStyleBold, GUILayout.Width(24)))
+                {
+                    OpenScene(scenes[i], true);
+                }
+                
+                // Add new button for adding current scene
+                if (GUILayout.Button("-", buttonStyleBold, GUILayout.Width(24)))
+                {
+                    CloseScene(scenes[i]);
+                }
 
                 GUI.backgroundColor = originalContentColor;
+                
+                GUILayout.EndHorizontal();
                 EditorGUI.EndDisabledGroup();
             }
         }
@@ -210,7 +227,7 @@ public class QuickSceneSwitcher : EditorWindow
     #region SceneManagement
 
     // Closes the current scene and opens the specified scene
-    private void OpenScene(SceneAsset scene)
+    private void OpenScene(SceneAsset scene, bool additional = false)
     {
         string scenePath = AssetDatabase.GetAssetPath(scene);
 
@@ -219,7 +236,27 @@ public class QuickSceneSwitcher : EditorWindow
         // If the user chooses 'cancel', don't switch scenes
         if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
         {
-            EditorSceneManager.OpenScene(scenePath);
+            if(additional)
+                EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
+            else
+                EditorSceneManager.OpenScene(scenePath);
+            SavePrefs();
+        }
+    }
+    
+    private void CloseScene(SceneAsset scene)
+    {
+        string scenePath = AssetDatabase.GetAssetPath(scene);
+
+        // Check if there are unsaved changes in the current scene and
+        // ask if the user wants to save them before switching to the new scene
+        // If the user chooses 'cancel', don't switch scenes
+        if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            if (EditorSceneManager.sceneCount > 1)
+            {
+                EditorSceneManager.CloseScene(EditorSceneManager.GetSceneByPath(scenePath), true);
+            }
             SavePrefs();
         }
     }
